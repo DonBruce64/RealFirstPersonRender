@@ -10,7 +10,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -30,7 +29,7 @@ import cpw.mods.fml.common.registry.EntityRegistry;
 public class REN {
 	public static final String MODID="rfpr";
 	public static final String MODNAME="Real First-Person Render";
-	public static final String MODVER="5.0.0";	
+	public static final String MODVER="5.1.0";	
 	private static final REN instance = new REN();
 	
 	private static boolean disabled;
@@ -89,7 +88,6 @@ public class REN {
 			}
 		}
 		if(disabled || overridden){return;}
-		if(!Minecraft.getMinecraft().gameSettings.hideGUI){Minecraft.getMinecraft().gameSettings.thirdPersonView = -1;}
 		if(dummy == null){
 		      if(spawnDelay == 0){
 		    	  dummy = new EntityPlayerDummy(Minecraft.getMinecraft().theWorld);
@@ -103,11 +101,6 @@ public class REN {
 			dummy = null;
 			spawnDelay = 100;
 		}
-	}
-	
-	@SubscribeEvent
-	public void on(RenderGameOverlayEvent.Pre event){
-		Minecraft.getMinecraft().gameSettings.thirdPersonView = 0;
 	}
 	
 	public class EntityPlayerDummy extends Entity{
@@ -137,7 +130,7 @@ public class REN {
 				//Temporarily remove helmet prior to rendering.
 				ItemStack helmetStack = player.inventory.armorInventory[3];
 				player.inventory.armorInventory[3] = null;
-				playerRenderer.doRender(player, player.posX - entity.posX + x + 0.25*Math.sin(Math.toRadians(player.rotationYaw)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.25*Math.cos(Math.toRadians(player.rotationYaw)), player.rotationYaw, ticks);
+				playerRenderer.doRender(player, player.posX - entity.posX + x + 0.35*Math.sin(Math.toRadians(player.rotationYaw)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.35*Math.cos(Math.toRadians(player.rotationYaw)), player.rotationYaw, ticks);
 				player.inventory.armorInventory[3] = helmetStack;
 				playerRenderer.modelBipedMain.bipedHead.isHidden = false;
 				playerRenderer.modelBipedMain.bipedEars.isHidden = false;
@@ -158,7 +151,7 @@ public class REN {
 				//Temporarily remove helmet prior to rendering.
 				ItemStack helmetStack = player.inventory.armorInventory[3];;
 				player.inventory.armorInventory[3] = null;
-				playerRenderer.doRender(player, player.posX - entity.posX + x + 0.25*Math.sin(Math.toRadians(player.rotationYaw)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.25*Math.cos(Math.toRadians(player.rotationYaw)), player.rotationYaw, ticks);
+				playerRenderer.doRender(player, player.posX - entity.posX + x + 0.35*Math.sin(Math.toRadians(player.rotationYaw)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.35*Math.cos(Math.toRadians(player.rotationYaw)), player.rotationYaw, ticks);
 				player.inventory.armorInventory[3] = helmetStack;
 				playerModel.bipedHead.isHidden = false;
 				playerModel.bipedHeadwear.isHidden = false;
