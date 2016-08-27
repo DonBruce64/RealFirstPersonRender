@@ -11,7 +11,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
-import net.minecraftforge.client.event.RenderHandEvent;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 
@@ -37,7 +37,7 @@ import cpw.mods.fml.common.registry.EntityRegistry;
 public class REN {
 	public static final String MODID="rfpr";
 	public static final String MODNAME="Real First-Person Render";
-	public static final String MODVER="6.0.0";	
+	public static final String MODVER="7.0.0";	
 	private static final REN instance = new REN();
 	
 	private static boolean drawCustomGUI;
@@ -96,7 +96,7 @@ public class REN {
 	}
 	
 	@SubscribeEvent
-	public void on(RenderHandEvent event){
+	public void on(RenderWorldLastEvent event){
 		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
 		customItemOverride = false;
 		if(player.inventory.getCurrentItem() != null){
@@ -162,9 +162,9 @@ public class REN {
 				ItemStack helmetStack = player.inventory.armorInventory[3];
 				player.inventory.armorInventory[3] = null;
 				if(player.isPlayerSleeping()){
-					playerRenderer.doRender(player, player.posX - entity.posX + x, player.posY - entity.posY + y, player.posZ - entity.posZ + z, player.rotationYaw, ticks);
+					playerRenderer.doRender(player, player.posX - entity.posX + x, player.posY - entity.posY + y, player.posZ - entity.posZ + z, player.renderYawOffset, ticks);
 				}else{
-					playerRenderer.doRender(player, player.posX - entity.posX + x + 0.35*Math.sin(Math.toRadians(player.rotationYaw)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.35*Math.cos(Math.toRadians(player.rotationYaw)), player.rotationYaw, ticks);
+					playerRenderer.doRender(player, player.posX - entity.posX + x + 0.35*Math.sin(Math.toRadians(player.renderYawOffset)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.35*Math.cos(Math.toRadians(player.renderYawOffset)), player.renderYawOffset, ticks);
 				}
 				player.inventory.armorInventory[3] = helmetStack;
 				playerRenderer.modelBipedMain.bipedHead.isHidden = false;
@@ -187,9 +187,9 @@ public class REN {
 				ItemStack helmetStack = player.inventory.armorInventory[3];;
 				player.inventory.armorInventory[3] = null;
 				if(player.isPlayerSleeping()){
-					playerRenderer.doRender(player, player.posX - entity.posX + x, player.posY - entity.posY + y, player.posZ - entity.posZ + z, player.rotationYaw, ticks);
+					playerRenderer.doRender(player, player.posX - entity.posX + x, player.posY - entity.posY + y, player.posZ - entity.posZ + z, player.renderYawOffset, ticks);
 				}else{
-					playerRenderer.doRender(player, player.posX - entity.posX + x + 0.35*Math.sin(Math.toRadians(player.rotationYaw)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.35*Math.cos(Math.toRadians(player.rotationYaw)), player.rotationYaw, ticks);
+					playerRenderer.doRender(player, player.posX - entity.posX + x + 0.35*Math.sin(Math.toRadians(player.renderYawOffset)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - 0.35*Math.cos(Math.toRadians(player.renderYawOffset)), player.renderYawOffset, ticks);
 				}
 				player.inventory.armorInventory[3] = helmetStack;
 				playerModel.bipedHead.isHidden = false;
