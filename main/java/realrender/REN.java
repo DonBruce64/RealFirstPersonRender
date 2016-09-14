@@ -9,8 +9,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
+import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -21,10 +23,8 @@ import org.lwjgl.opengl.GL11;
 
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
-import cpw.mods.fml.common.ModContainer;
 import cpw.mods.fml.common.ModMetadata;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -37,13 +37,16 @@ import cpw.mods.fml.common.registry.EntityRegistry;
 public class REN {
 	public static final String MODID="rfpr";
 	public static final String MODNAME="Real First-Person Render";
-	public static final String MODVER="7.0.0";	
+	public static final String MODVER="7.1.0";	
 	private static final REN instance = new REN();
 	
-	private static boolean drawCustomGUI;
-	private static boolean hidePlayerModel;
 	private static boolean customItemOverride;
 	private static boolean wasF1DownLastTick;
+	/**Mode for RFPR
+	 * First bit shows HUD (replacement for F1 functionality).
+	 * Second bit disables player body (regular hand shown).
+	 * Third bit activates shaders mode.
+	 */
 	private static byte mode;
 	private static byte spawnDelay = 100;
 	private static EntityPlayerDummy dummy;
@@ -83,16 +86,24 @@ public class REN {
 		if(event.phase.equals(Phase.START)){
 			if(Keyboard.isKeyDown(Keyboard.KEY_F1)){
 				if(!wasF1DownLastTick){
-					mode = ++mode > 3 ? 0 : mode;
+					if(Minecraft.getMinecraft().thePlayer.isSneaking()){
+						mode = (byte) ((mode & 3) + (~mode & 4));
+						Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText("SHADERS MODE: " + (mode >= 4 ? "ENABLED" : "DISABLED")));
+					}else{						
+						mode = (byte) ((mode & 3) == 3 ? (mode & 4) : (mode & 4) + (mode & 3) + 1);
+					}
 				}
 				wasF1DownLastTick = true;
 			}else{
 				wasF1DownLastTick = false;
 			}			
-			drawCustomGUI = mode == 0;
-			hidePlayerModel = mode >= 2;
-			Minecraft.getMinecraft().gameSettings.hideGUI = mode != 2;
+			Minecraft.getMinecraft().gameSettings.hideGUI = (mode & 1) == 1;
 		}
+	}
+	
+	@SubscribeEvent
+	public void on(RenderHandEvent event){
+		event.setCanceled((mode & 2) != 2);
 	}
 	
 	@SubscribeEvent
@@ -107,18 +118,23 @@ public class REN {
 				}
 			}
 		}
-		if(customItemOverride && drawCustomGUI){
-			Minecraft.getMinecraft().gameSettings.hideGUI = false;
-		}else if(drawCustomGUI){
-			Minecraft mc = Minecraft.getMinecraft();
-            final ScaledResolution scaledresolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-            int i = scaledresolution.getScaledWidth();
-            int j = scaledresolution.getScaledHeight();
-            final int k = Mouse.getX() * i / mc.displayWidth;
-            final int l = j - Mouse.getY() * j / mc.displayHeight - 1;
-			GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-			Minecraft.getMinecraft().ingameGUI.renderGameOverlay(event.partialTicks, mc.currentScreen != null, k, l);
+		
+		//Shaders mode enabled.
+		if(mode >= 4){
+			if(customItemOverride){
+				Minecraft.getMinecraft().gameSettings.hideGUI = false;
+			}else{
+				Minecraft mc = Minecraft.getMinecraft();
+	            final ScaledResolution scaledresolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+	            int i = scaledresolution.getScaledWidth();
+	            int j = scaledresolution.getScaledHeight();
+	            final int k = Mouse.getX() * i / mc.displayWidth;
+	            final int l = j - Mouse.getY() * j / mc.displayHeight - 1;
+				GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+				Minecraft.getMinecraft().ingameGUI.renderGameOverlay(event.partialTicks, mc.currentScreen != null, k, l);
+			}
 		}
+		
 		if(dummy == null){
 		      if(spawnDelay == 0){
 		    	  dummy = new EntityPlayerDummy(Minecraft.getMinecraft().theWorld);
@@ -151,7 +167,7 @@ public class REN {
 	public class RenderPlayerDummy extends Render{
 		@Override
 		public void doRender(Entity entity, double x, double y, double z, float yaw, float ticks){
-			if(Minecraft.getMinecraft().gameSettings.thirdPersonView == 0 && !hidePlayerModel && !customItemOverride){
+			if(Minecraft.getMinecraft().gameSettings.thirdPersonView == 0 && !((mode & 2) == 2) && !customItemOverride){
 				EntityClientPlayerMP player = Minecraft.getMinecraft().thePlayer;
 				if(player.inventory.armorInventory[2] != null && player.inventory.armorInventory[2].getItem().getUnlocalizedName().toLowerCase().contains("elytra") && Keyboard.isKeyDown(Keyboard.KEY_SPACE)){return;}
 				RenderPlayer playerRenderer = ((RenderPlayer) this.renderManager.getEntityRenderObject(player));
@@ -176,7 +192,7 @@ public class REN {
 		/*180+METHOD
 		@Override
 		public void doRender(Entity entity, double x, double y, double z, float yaw, float ticks){
-			if(Minecraft.getMinecraft().gameSettings.thirdPersonView == 0 && !disabled && !overridden){
+			if(Minecraft.getMinecraft().gameSettings.thirdPersonView == 0 && !((mode & 2) == 2) && !customItemOverride){
 				EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
 				if(player.inventory.armorInventory[2] != null && player.inventory.armorInventory[2].getItem().getUnlocalizedName().toLowerCase().contains("elytra") && Keyboard.isKeyDown(Keyboard.KEY_SPACE)){return;}
 				RenderPlayer playerRenderer = ((RenderPlayer) this.renderManager.getEntityRenderObject(player));
