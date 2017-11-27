@@ -1,8 +1,13 @@
 package realrender;
 
+import org.lwjgl.input.Keyboard;
+
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityClientPlayerMP;
+import net.minecraft.client.entity.AbstractClientPlayer;
+import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.renderer.entity.Render;
+import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -13,20 +18,17 @@ import net.minecraft.world.World;
 import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
-
-import org.lwjgl.input.Keyboard;
-
-import cpw.mods.fml.client.registry.RenderingRegistry;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.Mod.EventHandler;
-import cpw.mods.fml.common.ModMetadata;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.gameevent.TickEvent.Phase;
-import cpw.mods.fml.common.registry.EntityRegistry;
+import net.minecraftforge.fml.client.registry.IRenderFactory;
+import net.minecraftforge.fml.client.registry.RenderingRegistry;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.ModMetadata;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
+import net.minecraftforge.fml.common.registry.EntityRegistry;
 
 @Mod(modid = REN.MODID, name = REN.MODNAME, version = REN.MODVER)
 public class REN {
@@ -51,7 +53,7 @@ public class REN {
 	@EventHandler
 	public void PreInit(FMLPreInitializationEvent event){
 		this.initModMetadata(event);
-		//189+RenderingRegistry.registerEntityRenderingHandler(EntityPlayerDummy.class, new RENRenderingFactory(RenderPlayerDummy.class));
+		RenderingRegistry.registerEntityRenderingHandler(EntityPlayerDummy.class, new RENRenderingFactory(RenderPlayerDummy.class));
 		Configuration config = new Configuration(event.getSuggestedConfigurationFile());
 		config.load();
 		overrideItems = config.get(Configuration.CATEGORY_GENERAL, "OverrideItems", new String[]{"map", "compass", "clock"}, "When these items are held, RFPR will temporally stop rendering.").getStringList();
@@ -62,10 +64,8 @@ public class REN {
 	
 	@EventHandler
 	public void Init(FMLInitializationEvent event){
-		FMLCommonHandler.instance().bus().register(instance);
 		MinecraftForge.EVENT_BUS.register(instance);
-		EntityRegistry.registerModEntity(EntityPlayerDummy.class, "PlayerDummy", 0, MODID, 5, 100, false);
-		RenderingRegistry.registerEntityRenderingHandler(EntityPlayerDummy.class, new RenderPlayerDummy());
+		EntityRegistry.registerModEntity(new ResourceLocation(this.MODID, "PlayerDummy"), EntityPlayerDummy.class, "PlayerDummy", 0, MODID, 5, 100, false);
 	}
 	
 	private void initModMetadata(FMLPreInitializationEvent event){
@@ -99,7 +99,7 @@ public class REN {
 		}
 		
 		customItemOverride = false;
-		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+		EntityPlayer player = Minecraft.getMinecraft().player;
 		if(player != null){
 			if(player.inventory.getCurrentItem() != null){
 				for(String itemName : overrideItems){
@@ -112,13 +112,13 @@ public class REN {
 		
 			if(dummy == null){
 			      if(spawnDelay == 0){
-			    	  dummy = new EntityPlayerDummy(Minecraft.getMinecraft().theWorld);
-			    	  Minecraft.getMinecraft().theWorld.spawnEntityInWorld(dummy);
+			    	  dummy = new EntityPlayerDummy(Minecraft.getMinecraft().world);
+			    	  Minecraft.getMinecraft().world.spawnEntity(dummy);
 			    	  dummy.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch);
 			      }else{
 			        --spawnDelay;
 			      }
-			}else if(dummy.worldObj.provider.dimensionId != player.worldObj.provider.dimensionId || dummy.getDistanceSqToEntity(player) > 5){
+			}else if(dummy.world.provider.getDimension() != player.world.provider.getDimension() || dummy.getDistanceSqToEntity(player) > 5){
 				dummy.setDead();
 				dummy = null;
 				spawnDelay = 100;
@@ -131,66 +131,22 @@ public class REN {
 		event.setCanceled(modes[currentMode]/100 == 1 && !customItemOverride);
 	}
 	
-	public class EntityPlayerDummy extends Entity{
+	public static class EntityPlayerDummy extends Entity{
 		public EntityPlayerDummy(World world){
 			super(world);
 			this.ignoreFrustumCheck = true;
 			this.setSize(0, 2);
 		}
 		public void onUpdate(){
-			EntityPlayer player = Minecraft.getMinecraft().thePlayer;
-			dummy.setPositionAndRotation(player.posX, player.posY - player.height, player.posZ, player.rotationYaw, player.rotationPitch);
-			//180+dummy.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch);
+			EntityPlayer player = Minecraft.getMinecraft().player;
+			dummy.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch);
 		}
 		protected void entityInit(){}
 		protected void readEntityFromNBT(NBTTagCompound p_70037_1_){}
 		protected void writeEntityToNBT(NBTTagCompound p_70014_1_){}
 	};
 	
-	//*189+HEADER public static class RenderPlayerDummy extends Render{
-	public class RenderPlayerDummy extends Render{
-		@Override
-		public void doRender(Entity entity, double x, double y, double z, float yaw, float ticks){
-			if(Minecraft.getMinecraft().gameSettings.thirdPersonView == 0 && modes[currentMode]%100 >= 10){
-				EntityClientPlayerMP player = Minecraft.getMinecraft().thePlayer;
-				if(player.inventory.armorInventory[2] != null && player.inventory.armorInventory[2].getItem().getUnlocalizedName().toLowerCase().contains("elytra") && Keyboard.isKeyDown(Keyboard.KEY_SPACE)){return;}
-				RenderPlayer playerRenderer = ((RenderPlayer) this.renderManager.getEntityRenderObject(player));
-				playerRenderer.modelBipedMain.bipedHead.isHidden = true;
-				playerRenderer.modelBipedMain.bipedEars.isHidden = true;
-				playerRenderer.modelBipedMain.bipedHeadwear.isHidden = true;
-				
-				ItemStack tempStack = player.inventory.getCurrentItem();
-				if(modes[currentMode]/100 != 1 || (customItemOverride && modes[currentMode]%10 == 1)){
-					player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
-					playerRenderer.modelBipedMain.bipedLeftArm.isHidden = true;
-					playerRenderer.modelBipedMain.bipedRightArm.isHidden = true;
-					playerRenderer.modelArmorChestplate.bipedLeftArm.isHidden = true;
-					playerRenderer.modelArmorChestplate.bipedRightArm.isHidden = true;
-				}
-				//Temporarily remove helmet prior to rendering.
-				ItemStack helmetStack = player.inventory.armorInventory[3];
-				player.inventory.armorInventory[3] = null;
-				if(player.isPlayerSleeping()){
-					playerRenderer.doRender(player, player.posX - entity.posX + x, player.posY - entity.posY + y, player.posZ - entity.posZ + z, player.renderYawOffset, ticks);
-				}else{
-					double renderOffset = player.prevRenderYawOffset - (player.prevRenderYawOffset - player.renderYawOffset)*ticks;
-					playerRenderer.doRender(player, player.posX - entity.posX + x + bodyOffset*Math.sin(Math.toRadians(renderOffset)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - bodyOffset*Math.cos(Math.toRadians(renderOffset)), (float) renderOffset, ticks);
-				}
-				player.inventory.armorInventory[3] = helmetStack;
-				playerRenderer.modelBipedMain.bipedHead.isHidden = false;
-				playerRenderer.modelBipedMain.bipedEars.isHidden = false;
-				playerRenderer.modelBipedMain.bipedHeadwear.isHidden = false;
-				if(modes[currentMode]/100 != 1 || (customItemOverride && modes[currentMode]%10 == 1)){
-					player.inventory.setInventorySlotContents(player.inventory.currentItem, tempStack);
-					playerRenderer.modelBipedMain.bipedLeftArm.isHidden = false;
-					playerRenderer.modelBipedMain.bipedRightArm.isHidden = false;
-					playerRenderer.modelArmorChestplate.bipedLeftArm.isHidden = false;
-					playerRenderer.modelArmorChestplate.bipedRightArm.isHidden = false;
-				}
-			}
-		}
-		
-		/*180+METHOD
+	public static class RenderPlayerDummy extends Render{
 		public RenderPlayerDummy(RenderManager renderManager){
 			super(renderManager);
 		}
@@ -198,40 +154,39 @@ public class REN {
 		@Override
 		public void doRender(Entity entity, double x, double y, double z, float yaw, float ticks){
 			if(Minecraft.getMinecraft().gameSettings.thirdPersonView == 0 && modes[currentMode]%100 >= 10){
-				EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
-				if(player.inventory.armorInventory[2] != null && player.inventory.armorInventory[2].getItem().getUnlocalizedName().toLowerCase().contains("elytra") && Keyboard.isKeyDown(Keyboard.KEY_SPACE)){return;}
-				RenderPlayer playerRenderer = ((RenderPlayer) this.renderManager.getEntityRenderObject(player));
-				//189+Render<AbstractClientPlayer> render = (RenderPlayer) this.renderManager.<AbstractClientPlayer>getEntityRenderObject(player);
-				//189+RenderPlayer playerRenderer = (RenderPlayer)render;
+				EntityPlayerSP player = Minecraft.getMinecraft().player;
+				if(player.isElytraFlying()){return;}
+				Render<AbstractClientPlayer> render = (RenderPlayer) this.renderManager.<AbstractClientPlayer>getEntityRenderObject(player);
+				RenderPlayer playerRenderer = (RenderPlayer)render;
 				ModelPlayer playerModel = (ModelPlayer) playerRenderer.getMainModel();
 				playerModel.bipedHead.isHidden = true;
 				playerModel.bipedHeadwear.isHidden = true;
 				
 				ItemStack tempStackMain = player.inventory.getCurrentItem();
-				//190+ItemStack tempStackSecond = player.inventory.offHandInventory[0];
+				ItemStack tempStackSecond = player.inventory.offHandInventory.get(0);
 				if(modes[currentMode]/100 != 1 || (customItemOverride && modes[currentMode]%10 == 1)){
-					player.inventory.setInventorySlotContents(player.inventory.currentItem, null);
-					//190+player.inventory.offHandInventory[0] = null;
+					player.inventory.removeStackFromSlot(player.inventory.currentItem);
+					player.inventory.offHandInventory.set(0, ItemStack.EMPTY);
 					playerModel.bipedLeftArm.isHidden = true;
 					playerModel.bipedRightArm.isHidden = true;
 					playerModel.bipedLeftArmwear.isHidden = true;
 					playerModel.bipedRightArmwear.isHidden = true;
 				}
 				//Temporarily remove helmet prior to rendering.
-				ItemStack helmetStack = player.inventory.armorInventory[3];
-				player.inventory.armorInventory[3] = null;
+				ItemStack helmetStack = player.inventory.armorInventory.get(3);
+				player.inventory.armorInventory.set(3, ItemStack.EMPTY);
 				if(player.isPlayerSleeping()){
 					playerRenderer.doRender(player, player.posX - entity.posX + x, player.posY - entity.posY + y, player.posZ - entity.posZ + z, player.renderYawOffset, ticks);
 				}else{
 					double renderOffset = player.prevRenderYawOffset - (player.prevRenderYawOffset - player.renderYawOffset)*ticks;
 					playerRenderer.doRender(player, player.posX - entity.posX + x + bodyOffset*Math.sin(Math.toRadians(renderOffset)), player.posY - entity.posY + y, player.posZ - entity.posZ + z - bodyOffset*Math.cos(Math.toRadians(renderOffset)), (float) renderOffset, ticks);
 				}
-				player.inventory.armorInventory[3] = helmetStack;
+				player.inventory.armorInventory.set(3, helmetStack);
 				playerModel.bipedHead.isHidden = false;
 				playerModel.bipedHeadwear.isHidden = false;
 				if(modes[currentMode]/100 != 1 || (customItemOverride && modes[currentMode]%10 == 1)){
 					player.inventory.setInventorySlotContents(player.inventory.currentItem, tempStackMain);
-					//190+player.inventory.offHandInventory[0] = tempStackSecond;
+					player.inventory.offHandInventory.set(0, tempStackSecond);
 					playerModel.bipedLeftArm.isHidden = false;
 					playerModel.bipedRightArm.isHidden = false;
 					playerModel.bipedLeftArmwear.isHidden = false;
@@ -239,14 +194,13 @@ public class REN {
 				}
 			}
 		}
-		180+METHOD*/
 
 		@Override
 		protected ResourceLocation getEntityTexture(Entity entity){
 			return null;
 		}
 	};
-	/*189+METHOD	
+
 	public class RENRenderingFactory implements IRenderFactory{
 		private final Class<? extends Render> entityRender;
 		public RENRenderingFactory(Class<? extends Render>  entityRender){
@@ -263,5 +217,4 @@ public class REN {
 			}
 		}
 	};
-	189+METHOD*/
 }
