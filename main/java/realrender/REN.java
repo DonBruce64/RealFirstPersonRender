@@ -118,7 +118,7 @@ public class REN {
 			      }else{
 			        --spawnDelay;
 			      }
-			}else if(dummy.world.provider.getDimension() != player.world.provider.getDimension() || dummy.getDistanceSqToEntity(player) > 5){
+			}else if(dummy.world.provider.getDimension() != player.world.provider.getDimension() || dummy.getDistanceSq(player) > 5){
 				dummy.setDead();
 				dummy = null;
 				spawnDelay = 100;
