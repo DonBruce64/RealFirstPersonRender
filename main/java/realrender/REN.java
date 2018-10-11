@@ -16,7 +16,6 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
 import net.minecraftforge.client.event.RenderHandEvent;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.client.registry.IRenderFactory;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
@@ -29,13 +28,14 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
+import net.minecraftforge.fml.relauncher.Side;
 
+@Mod.EventBusSubscriber(Side.CLIENT)
 @Mod(modid = REN.MODID, name = REN.MODNAME, version = REN.MODVER)
 public class REN {
 	public static final String MODID="rfpr";
 	public static final String MODNAME="Real First-Person Render";
-	public static final String MODVER="8.1.0";	
-	private static final REN instance = new REN();
+	public static final String MODVER="9.0.0";	
 	
 	private static float bodyOffset;
 	/**Array for modes.  First number is 3D arms, 
@@ -64,7 +64,6 @@ public class REN {
 	
 	@EventHandler
 	public void Init(FMLInitializationEvent event){
-		MinecraftForge.EVENT_BUS.register(instance);
 		EntityRegistry.registerModEntity(new ResourceLocation(this.MODID, "PlayerDummy"), EntityPlayerDummy.class, "PlayerDummy", 0, MODID, 5, 100, false);
 	}
 	
@@ -81,7 +80,7 @@ public class REN {
 	}
 	
 	@SubscribeEvent
-	public void on(TickEvent.ClientTickEvent event){
+	public static void on(TickEvent.ClientTickEvent event){
 		if(event.phase.equals(Phase.START)){
 			if(Keyboard.isKeyDown(Keyboard.KEY_F1)){
 				if(!wasF1DownLastTick){
@@ -112,13 +111,13 @@ public class REN {
 		
 			if(dummy == null){
 			      if(spawnDelay == 0){
-			    	  dummy = new EntityPlayerDummy(Minecraft.getMinecraft().world);
-			    	  Minecraft.getMinecraft().world.spawnEntity(dummy);
+			    	  dummy = new EntityPlayerDummy(player.world);
 			    	  dummy.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch);
+			    	  player.world.spawnEntity(dummy);
 			      }else{
 			        --spawnDelay;
 			      }
-			}else if(dummy.world.provider.getDimension() != player.world.provider.getDimension() || dummy.getDistanceSq(player) > 5){
+			}else if(dummy.world.provider.getDimension() != player.world.provider.getDimension() || dummy.getDistanceSq(player) > 5 || dummy.lastTickUpdated < player.world.getTotalWorldTime() - 20){
 				dummy.setDead();
 				dummy = null;
 				spawnDelay = 100;
@@ -127,19 +126,23 @@ public class REN {
 	}
 	
 	@SubscribeEvent
-	public void on(RenderHandEvent event){
+	public static void on(RenderHandEvent event){
 		event.setCanceled(modes[currentMode]/100 == 1 && !customItemOverride);
 	}
 	
 	public static class EntityPlayerDummy extends Entity{
+		public long lastTickUpdated;
+		
 		public EntityPlayerDummy(World world){
 			super(world);
 			this.ignoreFrustumCheck = true;
 			this.setSize(0, 2);
+			this.lastTickUpdated = world.getTotalWorldTime();
 		}
 		public void onUpdate(){
 			EntityPlayer player = Minecraft.getMinecraft().player;
 			dummy.setPositionAndRotation(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch);
+			this.lastTickUpdated = world.getTotalWorldTime();
 		}
 		protected void entityInit(){}
 		protected void readEntityFromNBT(NBTTagCompound p_70037_1_){}
